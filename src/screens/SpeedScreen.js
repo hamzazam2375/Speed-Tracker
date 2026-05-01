@@ -1,17 +1,22 @@
-// SpeedScreen.js
-// Main screen — displays real-time speed from GPS (and optionally accelerometer)
-// TODO: Implement GPS speed tracking with expo-location
-// TODO: Implement accelerometer enhancement with expo-sensors
-
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import useLocation from '../hooks/useLocation';
 
 export default function SpeedScreen() {
+  const { speed, error, tracking, start, stop } = useLocation();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Speed Tracker</Text>
-      <Text style={styles.speed}>0</Text>
+      {error && <Text style={styles.error}>{error}</Text>}
+      <Text style={styles.speed}>{Math.round(speed)}</Text>
       <Text style={styles.unit}>km/h</Text>
+      <TouchableOpacity
+        style={[styles.btn, tracking && styles.btnStop]}
+        onPress={tracking ? stop : start}
+      >
+        <Text style={styles.btnText}>{tracking ? 'Stop' : 'Start'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -28,6 +33,11 @@ const styles = StyleSheet.create({
     color: '#888',
     marginBottom: 20,
   },
+  error: {
+    color: '#ff1744',
+    fontSize: 14,
+    marginBottom: 12,
+  },
   speed: {
     fontSize: 96,
     fontWeight: 'bold',
@@ -37,5 +47,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#555',
     marginTop: 8,
+  },
+  btn: {
+    marginTop: 40,
+    backgroundColor: '#00e5ff',
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 30,
+  },
+  btnStop: {
+    backgroundColor: '#ff1744',
+  },
+  btnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
