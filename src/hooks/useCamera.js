@@ -1,23 +1,26 @@
-import { useState, useRef, useCallback } from 'react';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-
-const CAPTURE_INTERVAL = 500; // ms between frame captures
+import { useState, useRef } from 'react';
+import { useCameraPermissions } from 'expo-camera';
 
 export default function useCamera() {
   const [permission, requestPermission] = useCameraPermissions();
   const [capturing, setCapturing] = useState(false);
+  const [lastPhoto, setLastPhoto] = useState(null);
+  const [frameCount, setFrameCount] = useState(0);
   const cameraRef = useRef(null);
   const timer = useRef(null);
 
+  // ask user for camera access
   async function askPermission() {
     if (permission?.granted) return true;
     let result = await requestPermission();
     return result.granted;
   }
 
-  function startCapture(onFrame) {
+  // start auto-capturing every 2 seconds
+  function startCapture() {
     if (!cameraRef.current) return;
     setCapturing(true);
+    setFrameCount(0);
     timer.current = setInterval(async () => {
       try {
         let photo = await cameraRef.current.takePictureAsync({
@@ -25,13 +28,16 @@ export default function useCamera() {
           base64: true,
           skipProcessing: true,
         });
-        if (onFrame) onFrame(photo);
+        setLastPhoto(photo);
+        setFrameCount(prev => prev + 1);
+        console.log('captured frame, size:', photo.base64.length);
       } catch (e) {
         console.log('capture error:', e.message);
       }
-    }, CAPTURE_INTERVAL);
+    }, 2000);
   }
 
+  // stop capturing
   function stopCapture() {
     if (timer.current) {
       clearInterval(timer.current);
@@ -44,6 +50,8 @@ export default function useCamera() {
     cameraRef,
     permission,
     capturing,
+    lastPhoto,
+    frameCount,
     askPermission,
     startCapture,
     stopCapture,

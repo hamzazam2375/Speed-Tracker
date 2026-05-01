@@ -1,12 +1,12 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import SpeedScreen from './src/screens/SpeedScreen';
+import CameraScreen from './src/screens/CameraScreen';
 
 export default function App() {
   return (
     <>
       <StatusBar style="light" />
-      <SpeedScreen />
+      <CameraScreen />
     </>
   );
 }
