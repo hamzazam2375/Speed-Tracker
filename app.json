@@ -15,8 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to track speed in real-time.",
-        "NSLocationAlwaysUsageDescription": "This app needs background location access for continuous speed tracking."
+        "NSCameraUsageDescription": "This app uses the camera to capture frames for speed estimation."
       }
     },
     "android": {
@@ -26,8 +25,7 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "CAMERA"
       ]
     },
     "web": {
@@ -35,9 +33,9 @@
     },
     "plugins": [
       [
-        "expo-location",
+        "expo-camera",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow SpeedTracker to use your location for real-time speed tracking."
+          "cameraPermission": "Allow SpeedTracker to access your camera for speed detection."
         }
       ]
     ]

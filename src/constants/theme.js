@@ -1,6 +1,3 @@
-// theme.js
-// Centralized theme constants for consistent styling across the app
-
 export const COLORS = {
   background: '#0a0a1a',
   surface: '#12122a',
@@ -19,7 +16,6 @@ export const COLORS = {
 export const FONTS = {
   regular: 'System',
   bold: 'System',
-  // TODO: Load custom fonts with expo-font if desired
 };
 
 export const SIZES = {
@@ -33,7 +29,6 @@ export const SIZES = {
 };
 
 export const SPEED = {
-  maxDisplaySpeed: 200, // Max speed for gauge (km/h)
-  updateInterval: 1000, // GPS update interval in ms
-  distanceFilter: 5,    // Minimum distance (meters) between GPS updates
+  maxDisplaySpeed: 200,
+  captureInterval: 500,
 };

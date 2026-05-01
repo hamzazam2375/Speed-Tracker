@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import useLocation from '../hooks/useLocation';
+import useSpeed from '../hooks/useSpeed';
 
 export default function SpeedScreen() {
-  const { speed, error, tracking, start, stop } = useLocation();
+  const { speed, error, tracking, start, stop } = useSpeed();
 
   return (
     <View style={styles.container}>
