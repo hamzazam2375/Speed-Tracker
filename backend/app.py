@@ -1,46 +1,45 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from processor import decode_frame, estimate_speed
-import time
+import numpy as np
+from PIL import Image
+from io import BytesIO
+import base64
 
+# create flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # allow requests from the mobile app
 
-prev_frame = None
-prev_time = None
-
-@app.route('/api/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'online', 'time': time.time()})
-
-@app.route('/api/process-frame', methods=['POST'])
-def process_frame():
-    global prev_frame, prev_time
+@app.route('/upload-frame', methods=['POST'])
+def upload_frame():
+    # get the json data from request
     data = request.get_json()
+
+    # check if image was sent
     if not data or 'image' not in data:
-        return jsonify({'error': 'no image provided', 'speed': 0}), 400
+        return jsonify({'error': 'no image in request'}), 400
 
     try:
-        curr_frame = decode_frame(data['image'])
-        curr_time = data.get('timestamp', time.time() * 1000) / 1000
+        # decode base64 string to raw image bytes
+        img_bytes = base64.b64decode(data['image'])
 
-        dt = 0
-        if prev_time is not None:
-            dt = curr_time - prev_time
+        # open image using PIL
+        img = Image.open(BytesIO(img_bytes))
 
-        speed = estimate_speed(prev_frame, curr_frame, dt)
-        prev_frame = curr_frame
-        prev_time = curr_time
+        # convert to numpy array (this is what opencv uses)
+        frame = np.array(img)
 
-        return jsonify({
-            'speed': round(speed, 2),
-            'unit': 'km/h',
-            'timestamp': curr_time,
-            'processed': True
-        })
+        # log the frame shape so we know it worked
+        print(f"Got frame: {frame.shape}")
+
+        # return dummy speed for now
+        # real opencv processing will go here later
+        return jsonify({'speed': 0})
+
     except Exception as e:
+        print(f"Error: {e}")
         return jsonify({'error': str(e), 'speed': 0}), 500
 
+# run the server
 if __name__ == '__main__':
-    print('Starting CV backend on port 8000...')
+    print('Server running on http://0.0.0.0:8000')
     app.run(host='0.0.0.0', port=8000, debug=True)
