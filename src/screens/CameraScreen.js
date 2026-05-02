@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView } from 'expo-camera';
 import useCamera from '../hooks/useCamera';
@@ -11,6 +11,11 @@ export default function CameraScreen() {
     askPermission, startCapture, stopCapture,
   } = useCamera();
 
+  // speed & status state
+  const [speed, setSpeed] = useState(null);
+  const [status, setStatus] = useState('idle');       // idle | processing | received | error
+  const [errorMsg, setErrorMsg] = useState(null);
+
   // ask for permission when screen loads
   useEffect(() => {
     askPermission();
@@ -20,21 +25,63 @@ export default function CameraScreen() {
   const handleFrame = useCallback(async (photo) => {
     if (!photo?.base64) return;
 
-    console.log('🔄 Processing frame #', frameCount + 1);
+    setStatus('processing');
+    setErrorMsg(null);
 
-    const result = await sendFrame(photo.base64);
+    try {
+      const result = await sendFrame(photo.base64);
 
-    if (result && !result.error) {
-      console.log('✅ Speed from backend:', result.speed, 'km/h');
-    } else {
-      console.log('⚠️ Backend returned error:', result?.error);
+      if (result && result.error) {
+        // backend returned an error
+        setStatus('error');
+        setErrorMsg(result.error);
+        console.log('Backend error:', result.error);
+      } else if (result && result.speed !== undefined && result.speed !== null) {
+        // valid speed received
+        setSpeed(result.speed);
+        setStatus('received');
+        console.log('Speed received:', result.speed, 'km/h');
+      } else {
+        // unexpected null/empty response
+        setStatus('error');
+        setErrorMsg('No speed data received');
+      }
+    } catch (e) {
+      setStatus('error');
+      setErrorMsg(e.message || 'Connection failed');
+      console.log('Frame send error:', e.message);
     }
-  }, [frameCount]);
+  }, []);
 
   // start capture with the API callback
   const handleStartCapture = useCallback(() => {
+    setSpeed(null);
+    setStatus('idle');
+    setErrorMsg(null);
     startCapture(handleFrame);
   }, [handleFrame]);
+
+  // stop and reset
+  const handleStopCapture = useCallback(() => {
+    stopCapture();
+    setStatus('idle');
+  }, []);
+
+  // get status indicator config
+  const getStatusConfig = () => {
+    switch (status) {
+      case 'processing':
+        return { text: 'Processing...', color: '#00e5ff' };
+      case 'received':
+        return { text: 'Speed received', color: '#00e676' };
+      case 'error':
+        return { text: errorMsg || 'Error', color: '#ff1744' };
+      default:
+        return { text: 'Waiting', color: '#555' };
+    }
+  };
+
+  const statusConfig = getStatusConfig();
 
   // permission not yet determined
   if (!permission) {
@@ -60,32 +107,61 @@ export default function CameraScreen() {
   return (
     <View style={styles.container}>
       {/* camera preview */}
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing="back"
-      />
+      <View style={styles.cameraWrapper}>
+        <CameraView
+          ref={cameraRef}
+          style={styles.camera}
+          facing="back"
+        />
+
+        {/* speed overlay on camera */}
+        <View style={styles.speedOverlay}>
+          <Text style={styles.speedValue}>
+            {speed !== null ? Math.round(speed) : '--'}
+          </Text>
+          <Text style={styles.speedUnit}>km/h</Text>
+        </View>
+      </View>
+
+      {/* status bar */}
+      <View style={styles.statusBar}>
+        <View style={styles.statusRow}>
+          {status === 'processing' && (
+            <ActivityIndicator size="small" color="#00e5ff" style={{ marginRight: 8 }} />
+          )}
+          <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+          <Text style={[styles.statusText, { color: statusConfig.color }]}>
+            {statusConfig.text}
+          </Text>
+        </View>
+      </View>
 
       {/* info bar */}
       <View style={styles.info}>
-        <Text style={styles.infoText}>Frames: {frameCount}</Text>
-        {lastPhoto && (
-          <Text style={styles.infoText}>
-            Last: {Math.round(lastPhoto.base64.length / 1024)}KB
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>FRAMES</Text>
+          <Text style={styles.infoValue}>{frameCount}</Text>
+        </View>
+        <View style={styles.infoDivider} />
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>SIZE</Text>
+          <Text style={styles.infoValue}>
+            {lastPhoto ? `${Math.round(lastPhoto.base64.length / 1024)}KB` : '--'}
           </Text>
-        )}
-        {processing && (
-          <View style={styles.processingRow}>
-            <ActivityIndicator size="small" color="#00e5ff" />
-            <Text style={styles.processingText}>Processing…</Text>
-          </View>
-        )}
+        </View>
+        <View style={styles.infoDivider} />
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>SPEED</Text>
+          <Text style={[styles.infoValue, { color: '#00e5ff' }]}>
+            {speed !== null ? `${speed} km/h` : '--'}
+          </Text>
+        </View>
       </View>
 
       {/* start/stop button */}
       <TouchableOpacity
         style={[styles.btn, capturing && styles.btnStop]}
-        onPress={capturing ? stopCapture : handleStartCapture}
+        onPress={capturing ? handleStopCapture : handleStartCapture}
       >
         <Text style={styles.btnText}>
           {capturing ? 'Stop Capture' : 'Start Capture'}
@@ -102,43 +178,107 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  cameraWrapper: {
+    width: '100%',
+    flex: 1,
+    position: 'relative',
+  },
   camera: {
     width: '100%',
     flex: 1,
   },
-  msg: {
-    color: '#aaa',
-    fontSize: 16,
-    marginBottom: 20,
+  // ── speed overlay ──
+  speedOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
   },
+  speedValue: {
+    fontSize: 56,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: -2,
+  },
+  speedUnit: {
+    fontSize: 16,
+    color: '#00e5ff',
+    fontWeight: '600',
+    marginTop: -4,
+  },
+  // ── status bar ──
+  statusBar: {
+    width: '100%',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#0d0d1f',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // ── info bar ──
   info: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     width: '100%',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: '#111',
   },
-  infoText: {
-    color: '#888',
-    fontSize: 14,
-  },
-  processingRow: {
-    flexDirection: 'row',
+  infoItem: {
     alignItems: 'center',
-    gap: 6,
+    flex: 1,
   },
-  processingText: {
-    color: '#00e5ff',
-    fontSize: 13,
-    fontWeight: '500',
+  infoLabel: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  infoValue: {
+    color: '#ccc',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  infoDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  // ── general ──
+  msg: {
+    color: '#aaa',
+    fontSize: 16,
+    marginBottom: 20,
   },
   btn: {
     backgroundColor: '#00e5ff',
     paddingHorizontal: 40,
     paddingVertical: 14,
     borderRadius: 30,
-    marginVertical: 20,
+    marginVertical: 16,
   },
   btnStop: {
     backgroundColor: '#ff1744',
