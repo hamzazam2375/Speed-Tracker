@@ -31,11 +31,8 @@ export default function useCamera() {
     setCapturing(true);
     setFrameCount(0);
     timer.current = setInterval(async () => {
-      // skip if previous capture+callback is still running
-      if (busyRef.current) {
-        console.log('Skipping frame — previous still processing');
-        return;
-      }
+      // skip if previous capture+callback is still running (prevents overlap)
+      if (busyRef.current) return;
       busyRef.current = true;
 
       try {
@@ -62,7 +59,7 @@ export default function useCamera() {
       } finally {
         busyRef.current = false;
       }
-    }, 1000);  // 1 second interval
+    }, 1500);  // 1.5 second interval (allows time for round-trip)
   }
 
   // stop capturing

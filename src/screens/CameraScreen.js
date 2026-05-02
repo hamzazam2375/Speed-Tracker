@@ -31,25 +31,23 @@ export default function CameraScreen() {
     try {
       const result = await sendFrame(photo.base64);
 
-      if (result && result.error) {
-        // backend returned an error
+      // sendFrame always returns { speed, status, ... } — never null
+      const receivedSpeed = typeof result.speed === 'number' ? result.speed : 0;
+
+      // check for error/timeout/network issues
+      if (result.error || result.status === 'timeout' || result.status === 'network_error') {
+        setSpeed(receivedSpeed);
         setStatus('error');
-        setErrorMsg(result.error);
-        console.log('Backend error:', result.error);
-      } else if (result && result.speed !== undefined && result.speed !== null) {
-        // valid speed received
-        setSpeed(result.speed);
-        setStatus('received');
-        console.log('Speed received:', result.speed, 'km/h');
+        setErrorMsg(result.error || result.status);
       } else {
-        // unexpected null/empty response
-        setStatus('error');
-        setErrorMsg('No speed data received');
+        setSpeed(receivedSpeed);
+        setStatus('received');
       }
     } catch (e) {
+      // safety net — should never reach here
+      setSpeed(0);
       setStatus('error');
-      setErrorMsg(e.message || 'Connection failed');
-      console.log('Frame send error:', e.message);
+      setErrorMsg('Unexpected error');
     }
   }, []);
 
