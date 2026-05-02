@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView } from 'expo-camera';
 import useCamera from '../hooks/useCamera';
+import { sendFrame } from '../services/api';
 
 export default function CameraScreen() {
   const {
-    cameraRef, permission, capturing,
+    cameraRef, permission, capturing, processing,
     lastPhoto, frameCount,
     askPermission, startCapture, stopCapture,
   } = useCamera();
@@ -14,6 +15,26 @@ export default function CameraScreen() {
   useEffect(() => {
     askPermission();
   }, []);
+
+  // callback that sends each captured frame to the backend
+  const handleFrame = useCallback(async (photo) => {
+    if (!photo?.base64) return;
+
+    console.log('🔄 Processing frame #', frameCount + 1);
+
+    const result = await sendFrame(photo.base64);
+
+    if (result && !result.error) {
+      console.log('✅ Speed from backend:', result.speed, 'km/h');
+    } else {
+      console.log('⚠️ Backend returned error:', result?.error);
+    }
+  }, [frameCount]);
+
+  // start capture with the API callback
+  const handleStartCapture = useCallback(() => {
+    startCapture(handleFrame);
+  }, [handleFrame]);
 
   // permission not yet determined
   if (!permission) {
@@ -53,12 +74,18 @@ export default function CameraScreen() {
             Last: {Math.round(lastPhoto.base64.length / 1024)}KB
           </Text>
         )}
+        {processing && (
+          <View style={styles.processingRow}>
+            <ActivityIndicator size="small" color="#00e5ff" />
+            <Text style={styles.processingText}>Processing…</Text>
+          </View>
+        )}
       </View>
 
       {/* start/stop button */}
       <TouchableOpacity
         style={[styles.btn, capturing && styles.btnStop]}
-        onPress={capturing ? stopCapture : startCapture}
+        onPress={capturing ? stopCapture : handleStartCapture}
       >
         <Text style={styles.btnText}>
           {capturing ? 'Stop Capture' : 'Start Capture'}
@@ -87,6 +114,7 @@ const styles = StyleSheet.create({
   info: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
     width: '100%',
     paddingVertical: 10,
     backgroundColor: '#111',
@@ -94,6 +122,16 @@ const styles = StyleSheet.create({
   infoText: {
     color: '#888',
     fontSize: 14,
+  },
+  processingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  processingText: {
+    color: '#00e5ff',
+    fontSize: 13,
+    fontWeight: '500',
   },
   btn: {
     backgroundColor: '#00e5ff',
