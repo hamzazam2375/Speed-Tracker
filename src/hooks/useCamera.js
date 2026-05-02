@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useCameraPermissions } from 'expo-camera';
 
 export default function useCamera() {
@@ -10,6 +10,7 @@ export default function useCamera() {
   const cameraRef = useRef(null);
   const timer = useRef(null);
   const callbackRef = useRef(null);
+  const busyRef = useRef(false);   // prevents overlapping captures
 
   // ask user for camera access
   async function askPermission() {
@@ -18,17 +19,25 @@ export default function useCamera() {
     return result.granted;
   }
 
-  // start auto-capturing every 2 seconds
+  // start auto-capturing every 1 second
   // accepts an optional onFrameCaptured(photo) callback
   function startCapture(onFrameCaptured) {
     if (!cameraRef.current) return;
 
     // store callback in ref so the interval always has the latest
     callbackRef.current = onFrameCaptured || null;
+    busyRef.current = false;
 
     setCapturing(true);
     setFrameCount(0);
     timer.current = setInterval(async () => {
+      // skip if previous capture+callback is still running
+      if (busyRef.current) {
+        console.log('Skipping frame — previous still processing');
+        return;
+      }
+      busyRef.current = true;
+
       try {
         let photo = await cameraRef.current.takePictureAsync({
           quality: 0.3,
@@ -37,7 +46,6 @@ export default function useCamera() {
         });
         setLastPhoto(photo);
         setFrameCount(prev => prev + 1);
-        console.log('📸 captured frame, size:', Math.round(photo.base64.length / 1024), 'KB');
 
         // if a callback was provided, call it with the photo
         if (callbackRef.current) {
@@ -51,8 +59,10 @@ export default function useCamera() {
       } catch (e) {
         console.log('capture error:', e.message);
         setProcessing(false);
+      } finally {
+        busyRef.current = false;
       }
-    }, 2000);
+    }, 1000);  // 1 second interval
   }
 
   // stop capturing
@@ -62,6 +72,7 @@ export default function useCamera() {
       timer.current = null;
     }
     callbackRef.current = null;
+    busyRef.current = false;
     setCapturing(false);
     setProcessing(false);
   }
