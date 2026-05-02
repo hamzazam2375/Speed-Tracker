@@ -2,8 +2,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import cv2
-from PIL import Image
-from io import BytesIO
 import base64
 import time
 from collections import deque
@@ -21,16 +19,16 @@ frame_number = 0
 stationary_count = 0
 
 MAX_SPEED = 80.0
-SMOOTH_WINDOW = 10
-SPEED_SCALE = 0.4
-MIN_FEATURES = 10
-SPIKE_THRESHOLD = 2.0
-MIN_MOTION_PX = 4.0
-BLUR_KERNEL = (21, 21)
-STATIONARY_COUNT_MAX = 2
-DEAD_ZONE_KMH = 5.0
-FRAME_WIDTH = 480
-WARMUP_FRAMES = 3
+SMOOTH_WINDOW = 6
+SPEED_SCALE = 0.55
+MIN_FEATURES = 5
+SPIKE_THRESHOLD = 2.5
+MIN_MOTION_PX = 2.0
+BLUR_KERNEL = (15, 15)
+STATIONARY_COUNT_MAX = 1
+DEAD_ZONE_KMH = 2.0
+FRAME_WIDTH = 640
+WARMUP_FRAMES = 1
 
 speed_history = deque(maxlen=SMOOTH_WINDOW)
 
@@ -41,10 +39,10 @@ LK_PARAMS = dict(
 )
 
 FEATURE_PARAMS = dict(
-    maxCorners=150,
-    qualityLevel=0.2,
-    minDistance=7,
-    blockSize=7,
+    maxCorners=80,
+    qualityLevel=0.3,
+    minDistance=5,
+    blockSize=5,
 )
 
 
@@ -187,20 +185,14 @@ def upload_frame():
         if not isinstance(image_data, str) or len(image_data) < 100:
             return jsonify(SAFE_RESPONSE), 200
 
-        img_bytes = base64.b64decode(image_data)
-        img = Image.open(BytesIO(img_bytes))
-        img.verify()
-        img = Image.open(BytesIO(img_bytes))
-        frame = np.array(img)
-
-        if frame.ndim < 2 or frame.shape[0] < 10 or frame.shape[1] < 10:
-            return jsonify(SAFE_RESPONSE), 200
-
-        if frame.ndim == 3 and frame.shape[2] >= 3:
-            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        elif frame.ndim == 2:
-            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-        else:
+        # faster decode: base64 -> numpy buffer -> cv2.imdecode (returns BGR)
+        try:
+            img_bytes = base64.b64decode(image_data)
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if frame_bgr is None:
+                return jsonify(SAFE_RESPONSE), 200
+        except Exception:
             return jsonify(SAFE_RESPONSE), 200
 
         speed, status = estimate_speed(frame_bgr)

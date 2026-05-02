@@ -25,8 +25,11 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "CAMERA"
-      ]
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.hamzaazam2375.speedtracker"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +41,11 @@
           "cameraPermission": "Allow SpeedTracker to access your camera for speed detection."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7f60aeb6-0171-4eba-8f77-5286158129d1"
+      }
+    }
   }
 }
