@@ -1,9 +1,6 @@
-// Speedometer.js
-// Reusable speedometer gauge component
-// TODO: Build a visual speedometer gauge (circular/arc display)
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { COLORS } from '../constants/theme';
 
 export default function Speedometer({ speed = 0 }) {
   return (
@@ -18,21 +15,23 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    borderWidth: 4,
-    borderColor: '#00e5ff',
-    backgroundColor: 'rgba(0, 229, 255, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 20,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
   },
   speed: {
-    fontSize: 72,
+    fontSize: 56,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: COLORS.textPrimary,
+    letterSpacing: -2,
   },
   unit: {
-    fontSize: 18,
-    color: '#00e5ff',
-    marginTop: 4,
+    fontSize: 16,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: -4,
   },
 });

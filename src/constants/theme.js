@@ -13,22 +13,12 @@ export const COLORS = {
   border: 'rgba(255, 255, 255, 0.08)',
 };
 
-export const FONTS = {
-  regular: 'System',
-  bold: 'System',
-};
-
 export const SIZES = {
-  speedDisplay: 96,
-  unitDisplay: 24,
+  speedDisplay: 72,
+  unitDisplay: 20,
   heading: 22,
   body: 16,
   caption: 12,
   borderRadius: 16,
   padding: 16,
-};
-
-export const SPEED = {
-  maxDisplaySpeed: 200,
-  captureInterval: 500,
 };
